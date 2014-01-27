@@ -1,33 +1,30 @@
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.EventQueue;
-
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.border.EmptyBorder;
-import javax.swing.JList;
 import java.awt.Dimension;
-import javax.swing.border.LineBorder;
-import java.awt.Color;
-import java.awt.GridBagLayout;
-import javax.swing.JButton;
 import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.Insets;
-import javax.swing.border.EtchedBorder;
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.JLabel;
-import javax.swing.ListCellRenderer;
-import javax.swing.SwingConstants;
-import javax.swing.JTextField;
-import javax.swing.JComboBox;
-import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
 import java.util.HashMap;
 
-import javax.swing.AbstractAction;
-import javax.swing.Action;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.ListCellRenderer;
+import javax.swing.SwingConstants;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.EtchedBorder;
 
-
+@SuppressWarnings("rawtypes")
 public class Frame extends JFrame {
 
 	private static final long serialVersionUID = 1L;
@@ -41,6 +38,7 @@ public class Frame extends JFrame {
 	private JButton selectFilesButton;
 	private JButton selectDirectoryButton;
 	private JLabel customHeaderLabel;
+	private JFileChooser fc;
 	
 	private HashMap<String, Object> settings;
 	
@@ -61,6 +59,10 @@ public class Frame extends JFrame {
 		contentPane.setBorder(new EmptyBorder(9, 9, 9, 9));
 		contentPane.setLayout(new BorderLayout(0, 0));
 		setContentPane(contentPane);
+		
+		fc = new JFileChooser();
+		fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
+		fc.setMultiSelectionEnabled(true);
 		
 		JPanel settingsPanel = new JPanel();
 		settingsPanel.setBorder(new EmptyBorder(0, 9, 0, 0));
@@ -156,17 +158,20 @@ public class Frame extends JFrame {
 		contentPane.add(listPanel, BorderLayout.WEST);
 		listPanel.setLayout(new BorderLayout(0, 0));
 		
-		fileList = new JList();
+		fileList = new JList<String>();
+		fileList.setModel(new DefaultListModel<String>());
 		fileList.setPreferredSize(new Dimension(256, 0));
 		listPanel.add(fileList);
 		fileList.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 		
 		selectFilesButton = new JButton("Select files");
+		selectFilesButton.addActionListener(new FileSelectorListener());
 		listPanel.add(selectFilesButton, BorderLayout.SOUTH);
+		
 	}
 	
 	private void saveSettings() {
-		//Get stitch mode
+		//Get stitch mode and, if available, custom header.
 		StitchMode mode = (StitchMode) stitchModeSelector.getSelectedItem();
 		settings.put("stitchmode", mode);
 		if (mode == StitchMode.CUSTOM_HEADER) {
@@ -180,6 +185,8 @@ public class Frame extends JFrame {
 		
 		//Get filename
 		settings.put("filename", filenameField.getText());
+		
+		//Get files
 		
 	}
 	
@@ -231,6 +238,26 @@ public class Frame extends JFrame {
 					
 				}
 					
+			}
+			
+		}
+		
+	}
+	
+	private class FileSelectorListener implements ActionListener {
+
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			if (e.getSource() == selectFilesButton) {
+				if ((fc.showDialog(((JButton) e.getSource()).getParent(), "Select") == JFileChooser.APPROVE_OPTION)) {
+					
+					File[] files = fc.getSelectedFiles();
+					for (File file : files) {
+						((DefaultListModel<String>) fileList.getModel()).addElement(file.getName());
+					}
+					
+				}
+				
 			}
 			
 		}
