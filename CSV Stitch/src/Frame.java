@@ -1,28 +1,37 @@
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.ListCellRenderer;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.EtchedBorder;
+import javax.swing.filechooser.FileFilter;
 
 @SuppressWarnings("rawtypes")
 public class Frame extends JFrame {
@@ -33,19 +42,29 @@ public class Frame extends JFrame {
 	private JTextField filenameField;
 	private JTextField customHeaderField;
 	private JComboBox<StitchMode> stitchModeSelector;
-	private JList<String> fileList;
+	private JList<String> fileJList;
+	private DefaultListModel<String> fileJListModel;
 	private JButton createFileButton;
 	private JButton selectFilesButton;
 	private JButton selectDirectoryButton;
 	private JLabel customHeaderLabel;
 	private JFileChooser fc;
+	private JPanel fileSelectorPanel;
+	private JButton removeFileButton;
 	
+	private Stitcher stitcher;
 	private HashMap<String, Object> settings;
+	private ArrayList<File> files;
+	private HashMap<String, Integer> indexList;
+	private File targetDirectory;
 	
 	protected StitchMode[] modes = 	new StitchMode[] {
 			StitchMode.FIRST_FILE_HEADER, StitchMode.DETECT_HEADER, 
 			StitchMode.CUSTOM_HEADER, StitchMode.NO_HEADER, StitchMode.COPY_ALL
 	};
+	private JLabel infoIcon;
+	private JCheckBox checkBox;
+	private JLabel lblCheckForDuplicate;
 
 	/**
 	 * Create the frame.
@@ -61,15 +80,19 @@ public class Frame extends JFrame {
 		setContentPane(contentPane);
 		
 		fc = new JFileChooser();
+		fc.setFileFilter(new ExtensionFileFilter("Comma-separated files", new String[] {"CSV", "TXT"}));
 		fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
 		fc.setMultiSelectionEnabled(true);
+		
+		files = new ArrayList<>();
+		indexList = new HashMap<>();
 		
 		JPanel settingsPanel = new JPanel();
 		settingsPanel.setBorder(new EmptyBorder(0, 9, 0, 0));
 		contentPane.add(settingsPanel, BorderLayout.CENTER);
 		GridBagLayout gbl_settingsPanel = new GridBagLayout();
 		gbl_settingsPanel.columnWidths = new int[]{0, 0, 100, 0, 0};
-		gbl_settingsPanel.rowHeights = new int[]{0, 0, 0, 0, 19, 0, 0, 31, 0, 0, 0, 0, 0, 0, 0, 0};
+		gbl_settingsPanel.rowHeights = new int[]{0, 0, 0, 0, 19, 0, 0, 27, 0, 0, 0, 0, 0, 0, 0, 0};
 		gbl_settingsPanel.columnWeights = new double[]{0.0, 0.0, 1.0, 0.0, Double.MIN_VALUE};
 		gbl_settingsPanel.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
 		settingsPanel.setLayout(gbl_settingsPanel);
@@ -100,6 +123,26 @@ public class Frame extends JFrame {
 		settingsPanel.add(extensionLabel, gbc_extensionLabel);
 		
 		selectDirectoryButton = new JButton("Select directory");
+		selectDirectoryButton.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				JFileChooser chooser = new JFileChooser();
+				chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+				
+				if (chooser.showOpenDialog(Frame.this) == JFileChooser.APPROVE_OPTION) {
+					File file = chooser.getSelectedFile();
+					
+					if (file.isDirectory()) {
+						targetDirectory = file;
+						
+					}
+					
+				}
+				
+			}
+			
+		});
 		GridBagConstraints gbc_selectDirectoryButton = new GridBagConstraints();
 		gbc_selectDirectoryButton.anchor = GridBagConstraints.WEST;
 		gbc_selectDirectoryButton.insets = new Insets(0, 0, 5, 5);
@@ -127,6 +170,52 @@ public class Frame extends JFrame {
 		gbc_stitchModeSelector.gridy = 5;
 		settingsPanel.add(stitchModeSelector, gbc_stitchModeSelector);
 		
+		infoIcon = new JLabel();
+		infoIcon.setIcon(new ImageIcon("res/img/info.png"));
+		infoIcon.setToolTipText(((StitchMode) stitchModeSelector.getSelectedItem()).getDescription());
+		infoIcon.addMouseListener(new MouseListener() {
+			
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				//Unused
+				
+			}
+			
+			@Override
+			public void mousePressed(MouseEvent e) {
+				//Unused
+				
+			}
+			
+			@Override
+			public void mouseExited(MouseEvent e) {
+				//Unused
+				
+			}
+			
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				//Unused
+				
+			}
+			
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				JOptionPane.showMessageDialog(
+						Frame.this, 
+						((StitchMode) stitchModeSelector.getSelectedItem()).getDescription(), 
+						"Information - " + ((StitchMode) stitchModeSelector.getSelectedItem()).getTrivialName(), 
+						JOptionPane.INFORMATION_MESSAGE);
+				
+			}
+			
+		});
+		GridBagConstraints gbc_infoIcon = new GridBagConstraints();
+		gbc_infoIcon.insets = new Insets(0, 0, 5, 0);
+		gbc_infoIcon.gridx = 3;
+		gbc_infoIcon.gridy = 5;
+		settingsPanel.add(infoIcon, gbc_infoIcon);
+		
 		customHeaderLabel = new JLabel("Custom header:");
 		customHeaderLabel.setEnabled(false);
 		GridBagConstraints gbc_customHeaderLabel = new GridBagConstraints();
@@ -147,26 +236,69 @@ public class Frame extends JFrame {
 		customHeaderField.setColumns(10);
 		
 		createFileButton = new JButton("Create file!");
+		createFileButton.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (checkInputs()) {
+					saveSettings();
+					
+					Stitcher.createFile(settings);
+					
+				}
+				
+			}
+			
+		});
+		
+		checkBox = new JCheckBox("");
+		checkBox.setEnabled(false);
+		GridBagConstraints gbc_checkBox = new GridBagConstraints();
+		gbc_checkBox.insets = new Insets(0, 0, 5, 5);
+		gbc_checkBox.gridx = 1;
+		gbc_checkBox.gridy = 7;
+		settingsPanel.add(checkBox, gbc_checkBox);
+		
+		lblCheckForDuplicate = new JLabel("Check for \n duplicate files");
+		lblCheckForDuplicate.setEnabled(false);
+		GridBagConstraints gbc_lblCheckForDuplicate = new GridBagConstraints();
+		gbc_lblCheckForDuplicate.anchor = GridBagConstraints.WEST;
+		gbc_lblCheckForDuplicate.insets = new Insets(0, 0, 5, 5);
+		gbc_lblCheckForDuplicate.gridx = 2;
+		gbc_lblCheckForDuplicate.gridy = 7;
+		settingsPanel.add(lblCheckForDuplicate, gbc_lblCheckForDuplicate);
 		GridBagConstraints gbc_createFileButton = new GridBagConstraints();
 		gbc_createFileButton.fill = GridBagConstraints.HORIZONTAL;
 		gbc_createFileButton.insets = new Insets(0, 0, 5, 5);
 		gbc_createFileButton.gridx = 2;
-		gbc_createFileButton.gridy = 8;
+		gbc_createFileButton.gridy = 9;
 		settingsPanel.add(createFileButton, gbc_createFileButton);
 		
 		JPanel listPanel = new JPanel();
 		contentPane.add(listPanel, BorderLayout.WEST);
 		listPanel.setLayout(new BorderLayout(0, 0));
 		
-		fileList = new JList<String>();
-		fileList.setModel(new DefaultListModel<String>());
-		fileList.setPreferredSize(new Dimension(256, 0));
-		listPanel.add(fileList);
-		fileList.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		fileJListModel = new DefaultListModel<>();
 		
-		selectFilesButton = new JButton("Select files");
+		fileJList = new JList<String>();
+		fileJList.setModel(fileJListModel);
+		fileJList.setPreferredSize(new Dimension(256, 0));
+		listPanel.add(fileJList);
+		fileJList.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		
+		fileSelectorPanel = new JPanel();
+		FlowLayout fl_fileSelectorPanel = (FlowLayout) fileSelectorPanel.getLayout();
+		fl_fileSelectorPanel.setVgap(0);
+		fl_fileSelectorPanel.setHgap(0);
+		listPanel.add(fileSelectorPanel, BorderLayout.SOUTH);
+		
+		selectFilesButton = new JButton("Add files");
 		selectFilesButton.addActionListener(new FileSelectorListener());
-		listPanel.add(selectFilesButton, BorderLayout.SOUTH);
+		fileSelectorPanel.add(selectFilesButton);
+		
+		removeFileButton = new JButton("Remove files");
+		removeFileButton.addActionListener(new FileRemoverListener());
+		fileSelectorPanel.add(removeFileButton);
 		
 	}
 	
@@ -187,6 +319,53 @@ public class Frame extends JFrame {
 		settings.put("filename", filenameField.getText());
 		
 		//Get files
+		settings.put("files", files.toArray(new File[files.size()]));
+		
+		//Clear files because there might be quite a lot
+		if (files.size() > 50) {
+			files.clear();
+			
+		}
+		
+	}
+	
+	public boolean checkInputs() {
+		//Check filename field
+		if (filenameField.getText() == "") {
+			JOptionPane.showMessageDialog(this, "No filename specified", "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
+			
+		}
+		
+		if (targetDirectory == null) {
+			JOptionPane.showMessageDialog(this, "No directory specified for target file", "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
+			
+		}
+		
+		//Check selected files
+		if (files.isEmpty()) {
+			JOptionPane.showMessageDialog(this, "No files selected", "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
+			
+		}
+		
+		//If custom header needed, check if there is one
+		if (stitchModeSelector.getSelectedItem() == StitchMode.CUSTOM_HEADER) {
+			if (customHeaderField.getText() == "") {
+				JOptionPane.showMessageDialog(this, "No custom header specified", "Error", JOptionPane.ERROR_MESSAGE);
+				return false;
+				
+			}
+			
+		}
+		else if (stitchModeSelector.getSelectedItem() == StitchMode.COPY_ALL) {
+			JOptionPane.showMessageDialog(this, "This copying method is not advised", "Error", JOptionPane.WARNING_MESSAGE);
+			return false;
+			
+		}
+		
+		return true;
 		
 	}
 	
@@ -212,9 +391,72 @@ public class Frame extends JFrame {
             }
 			
 			setText(((StitchMode) value).getTrivialName());
+			setToolTipText(((StitchMode) value).getDescription());
 			setBorder(new EmptyBorder(2, 2, 2, 2));
 			
 			return this;
+			
+		}
+		
+	}
+	
+	private class ExtensionFileFilter extends FileFilter {
+		String description;
+		
+		String extensions[];
+		
+		public ExtensionFileFilter(String description, String extension) {
+			  this(description, new String[] {extension});
+			  
+		}
+		
+		public ExtensionFileFilter(String description, String extensions[]) {
+			if (description == null) {
+				this.description = extensions[0];
+				
+			}
+			else {
+				this.description = description;
+				
+			}
+			this.extensions = (String[]) extensions.clone();
+			toLower(this.extensions);
+			
+		}
+
+		private void toLower(String array[]) {
+			for (int i = 0, n = array.length; i < n; i++) {
+				array[i] = array[i].toLowerCase();
+				
+			}
+			
+		}
+
+		public String getDescription() {
+			return description;
+			
+		}
+
+		public boolean accept(File file) {
+			if (file.isDirectory()) {
+				return true;
+				
+			}
+			else {
+				String path = file.getAbsolutePath().toLowerCase();
+				
+				for (int i = 0, n = extensions.length; i < n; i++) {
+					String extension = extensions[i];
+					if ((path.endsWith(extension) && (path.charAt(path.length() - extension.length() - 1)) == '.')) {
+						return true;
+						
+					}
+					
+				}
+				
+			}
+			
+			return false;
 			
 		}
 		
@@ -237,7 +479,9 @@ public class Frame extends JFrame {
 					customHeaderLabel.setEnabled(false);
 					
 				}
-					
+				
+				infoIcon.setToolTipText(mode.getDescription());
+				
 			}
 			
 		}
@@ -253,8 +497,56 @@ public class Frame extends JFrame {
 					
 					File[] files = fc.getSelectedFiles();
 					for (File file : files) {
-						((DefaultListModel<String>) fileList.getModel()).addElement(file.getName());
+						if (! Frame.this.files.contains(file)) {
+							//Add to JList
+							fileJListModel.addElement(file.getName());
+							
+							//Add to filelist and make pointer
+							Frame.this.files.add(file);
+							indexList.put(file.getName(), Frame.this.files.indexOf(file));
+							
+						}
+						
 					}
+					
+					//TODO: Make alert when files could not be added because they already were. Show list of all files to which this applies.
+					
+				}
+				
+			}
+			
+		}
+		
+	}
+	
+	private class FileRemoverListener implements ActionListener {
+
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			if (e.getSource() == removeFileButton) {
+				List<String> selected = fileJList.getSelectedValuesList();
+				
+				for (String s : selected) {
+					//Remove item form JList
+					fileJListModel.removeElement(s);
+					
+					//Remove item using the pointer and remove pointer
+					int index = indexList.get(s);
+					files.remove(index);
+					indexList.remove(s);
+					
+					refreshPointers();
+					
+				}
+				
+			}
+			
+		}
+		
+		public void refreshPointers() {
+			for (File file : files) {
+				if (indexList.containsKey(file.getName())) {
+					indexList.put(file.getName(), files.indexOf(file));
 					
 				}
 				
