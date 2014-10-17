@@ -31,8 +31,6 @@ public class Stitcher {
 //		dialog.setResizable(true);
 //		dialog.setVisible(true);	
 		
-		//-------\\
-		//This is good
 		//Create target file first
 		String targetPath;
 		
@@ -58,8 +56,6 @@ public class Stitcher {
 		
 		target.createNewFile();
 		
-		//Until here
-		//--------\\
 		StitchMode mode = (StitchMode) settings.get(Frame.SETTINGS_STITCHMODE);
 		PrintStream ps = new PrintStream(target);
 
@@ -75,39 +71,18 @@ public class Stitcher {
 			}
 			
 		}
-//        else if (mode == StitchMode.AUTO_DETECT) {
-//            String lastLine;
-//            int settings.get
-//            for (File file : files) {
-//                if ()
-//
-//            }
-//
-//        }
 		
 		//Loop through all given files
-//		total = files.length;
 		int i = 0;
 		for (File file : files) {
-//			index = i + 1;
-//			current = file.getName();
-//			setLabelText();
 			writeToTarget(ps, readFile(file, mode), mode, i++);
 			
 		}
 		
-//		dialog.setVisible(false);
-//		dialog.dispose();
-//		dialog = null;
 		ps.close();
 		return FILE_CREATED;
 		
 	}
-	
-//	private static void setLabelText() {
-//		progressLabel.setText("<html>File " + index + " of " + total + "<br />" + "Current file: " + current);
-//		
-//	}
 	
 	private static String[] readFile(File f, StitchMode mode) throws FileNotFoundException {
 		Scanner scanner = new Scanner(f);
@@ -167,10 +142,6 @@ public class Stitcher {
 			return null;
 			
 		}
-//		else if (mode == StitchMode.DETECT_HEADER) {
-//			//NOTHing
-//			
-//		}
 		
 	}
 
