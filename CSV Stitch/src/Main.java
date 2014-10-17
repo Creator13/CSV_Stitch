@@ -13,16 +13,6 @@ public class Main {
 		
 		Frame frame = new Frame();
 		frame.setVisible(true);
-
-//		String[] fileContents1 = FileLoader.readFile("C:\\test\\csv1.csv");
-//		String[] fileContents2 = FileLoader.readFile("C:\\test\\csv2.csv");
-//		String[] fileContents3 = FileLoader.readFile("C:\\test\\csv3.csv");
-//		
-//		String newFile = Stitch.stitch(fileContents1, fileContents2, fileContents3);
-//		
-//		System.out.println(newFile);
-//		
-//		createNewFile("test", newFile);
 		
 	}
 	
