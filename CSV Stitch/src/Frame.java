@@ -10,6 +10,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,11 +33,19 @@ import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.EtchedBorder;
 import javax.swing.filechooser.FileFilter;
+import javax.swing.filechooser.FileSystemView;
 
 @SuppressWarnings("rawtypes")
 public class Frame extends JFrame {
 
 	private static final long serialVersionUID = 1L;
+
+	public static final String SETTINGS_CUSTOM_HEADER = "customheader";
+	public static final String SETTINGS_FILENAME = "filename";
+	public static final String SETTINGS_FILES = "files";
+	public static final String SETTINGS_STITCHMODE = "stitchmode";
+	public static final String SETTINGS_TARGET_DIRECTORY = "targetdir";
+    public static final int SETTINGS_AUTO_DETECT_MAX_FAILURES = 0;
 	
 	private JPanel contentPane;
 	private JTextField filenameField;
@@ -59,9 +68,11 @@ public class Frame extends JFrame {
 	private File targetDirectory;
 	
 	protected StitchMode[] modes = 	new StitchMode[] {
-			StitchMode.FIRST_FILE_HEADER, StitchMode.DETECT_HEADER, 
+			StitchMode.FIRST_FILE_HEADER, /*StitchMode.AUTO_DETECT,*/
 			StitchMode.CUSTOM_HEADER, StitchMode.NO_HEADER, StitchMode.COPY_ALL
 	};
+	
+	//TODO: Finish this option to check for duplicates and remove them.
 	private JLabel infoIcon;
 	private JCheckBox checkBox;
 	private JLabel lblCheckForDuplicate;
@@ -80,12 +91,13 @@ public class Frame extends JFrame {
 		setContentPane(contentPane);
 		
 		fc = new JFileChooser();
-		fc.setFileFilter(new ExtensionFileFilter("Comma-separated files", new String[] {"CSV", "TXT"}));
+		fc.setFileFilter(new ExtensionFileFilter("Comma-separated files (\".csv\", \".txt\")", new String[] {"CSV", "TXT"}));
 		fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
 		fc.setMultiSelectionEnabled(true);
 		
 		files = new ArrayList<>();
 		indexList = new HashMap<>();
+		settings = new HashMap<>();
 		
 		JPanel settingsPanel = new JPanel();
 		settingsPanel.setBorder(new EmptyBorder(0, 9, 0, 0));
@@ -159,7 +171,6 @@ public class Frame extends JFrame {
 		settingsPanel.add(headerLabel, gbc_headerLabel);
 		
 		stitchModeSelector = new JComboBox<StitchMode>();
-//		stitchModeSelector.setEditable(true);
 		stitchModeSelector.setModel(new DefaultComboBoxModel<StitchMode>(modes));
 		stitchModeSelector.setRenderer(new StitchModeComboboxRenderer());
 		stitchModeSelector.addActionListener(new ModeSelectionListener());
@@ -243,7 +254,17 @@ public class Frame extends JFrame {
 				if (checkInputs()) {
 					saveSettings();
 					
-					Stitcher.createFile(settings);
+					try {
+						if (Stitcher.createFile(settings) == Stitcher.FILE_CREATED) {
+							JOptionPane.showMessageDialog(Frame.this, "File created!");
+							
+						}
+						
+					}
+					catch (IOException ex) {
+						ex.printStackTrace();
+						
+					}
 					
 				}
 				
@@ -305,41 +326,61 @@ public class Frame extends JFrame {
 	private void saveSettings() {
 		//Get stitch mode and, if available, custom header.
 		StitchMode mode = (StitchMode) stitchModeSelector.getSelectedItem();
-		settings.put("stitchmode", mode);
+		System.out.println(mode);
+		settings.put(SETTINGS_STITCHMODE, mode);
 		if (mode == StitchMode.CUSTOM_HEADER) {
-			settings.put("customheader", customHeaderField.getText());
+			settings.put(SETTINGS_CUSTOM_HEADER, customHeaderField.getText());
 			
 		}
 		else {
-			settings.put("customheader", null);
+			settings.put(SETTINGS_CUSTOM_HEADER, null);
 			
 		}
 		
-		//Get filename
-		settings.put("filename", filenameField.getText());
+		//Get filename & path
+		String filename = filenameField.getText() + ".csv";
+		settings.put(SETTINGS_FILENAME, filename);
+		settings.put(SETTINGS_TARGET_DIRECTORY, targetDirectory);
 		
 		//Get files
-		settings.put("files", files.toArray(new File[files.size()]));
+		settings.put(SETTINGS_FILES, files.toArray(new File[files.size()]));
 		
-		//Clear files because there might be quite a lot
-		if (files.size() > 50) {
-			files.clear();
-			
-		}
+		//Clear files to save RAM space, because there might be quite a lot (supposing user will not create a second file with the same sources)
+		//TODO: add option to keep files
+		files.clear();
+		fileJListModel.clear();
 		
 	}
 	
 	public boolean checkInputs() {
 		//Check filename field
-		if (filenameField.getText() == "") {
+		if (filenameField.getText().equals("")) {
 			JOptionPane.showMessageDialog(this, "No filename specified", "Error", JOptionPane.ERROR_MESSAGE);
 			return false;
 			
 		}
 		
+		//Check directory
 		if (targetDirectory == null) {
-			JOptionPane.showMessageDialog(this, "No directory specified for target file", "Error", JOptionPane.ERROR_MESSAGE);
-			return false;
+			//Create default directory
+			JFileChooser fc = new JFileChooser();
+			FileSystemView fsv = fc.getFileSystemView();
+			File defDir = fsv.getDefaultDirectory();
+			int option = JOptionPane.showConfirmDialog(
+					this, 
+					"No directory for target file specified\n\n Use \"" + defDir.getAbsolutePath() + "\" instead?", 
+					"Error", 
+					JOptionPane.OK_CANCEL_OPTION, 
+					JOptionPane.ERROR_MESSAGE);
+			
+			if (option == JOptionPane.OK_OPTION) {
+				targetDirectory = defDir;
+				
+			}
+			else if (option == JOptionPane.CANCEL_OPTION) {
+				return false;
+				
+			}
 			
 		}
 		
@@ -352,23 +393,18 @@ public class Frame extends JFrame {
 		
 		//If custom header needed, check if there is one
 		if (stitchModeSelector.getSelectedItem() == StitchMode.CUSTOM_HEADER) {
-			if (customHeaderField.getText() == "") {
+			if (customHeaderField.getText().equals("")) {
 				JOptionPane.showMessageDialog(this, "No custom header specified", "Error", JOptionPane.ERROR_MESSAGE);
 				return false;
 				
 			}
 			
 		}
-		else if (stitchModeSelector.getSelectedItem() == StitchMode.COPY_ALL) {
-			JOptionPane.showMessageDialog(this, "This copying method is not advised", "Error", JOptionPane.WARNING_MESSAGE);
-			return false;
-			
-		}
 		
 		return true;
 		
 	}
-	
+
 	private class StitchModeComboboxRenderer extends JLabel implements ListCellRenderer {
 		
 		private static final long serialVersionUID = 1L;
